@@ -2,11 +2,26 @@
     "45934473": {
         "nombre": "Mateo Marchisone",
         "email": "mateo.marchisone@itsv.edu.ar",
-        "patentes": ["AE114JP", "AB040JO"]
+        "patentes": [
+            "AE114JP",
+            "AB040JO"
+        ]
     },
     "49822993": {
         "nombre": "Francisco Aybar",
         "email": "f.aybar@itsv.edu.ar",
-        "patentes": ["AA111AA"]
+        "patentes": [
+            "AA111AA"
+        ]
+    },
+    "50189258": {
+        "nombre": "Joaquin Castellano",
+        "email": "j.castellano@itsv.edu.ar",
+        "patentes": []
+    },
+    "111111111": {
+        "nombre": "Pepito",
+        "email": "gdsadsa",
+        "patentes": []
     }
 }
