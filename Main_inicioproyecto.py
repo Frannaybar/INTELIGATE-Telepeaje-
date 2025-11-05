@@ -1,31 +1,68 @@
 import sys
-from PySide6.QtWidgets import QApplication, QMainWindow
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QPixmap
 import json
 import os
-from PyQt6 import uic
-from PyQt6.QtGui import QColor
-
-"""
-from Archivo convertido con pyside2-uic archivo.ui > interfaz.py
-import nombself.ui.label_2.setPixmap(QPixmap("tux.jpg")) #carga la imagen en el label_2re de la clase del archivo convertido
-"""
+from PySide6.QtWidgets import (
+    QApplication, QMainWindow, QWidget, QMessageBox, QVBoxLayout,
+    QLabel, QLineEdit, QPushButton
+)
+from PySide6.QtGui import QPixmap
 from ui_proyecto import Ui_MainWindow
 
 BASE_DE_DATOS = "./basededatos.json"
 
 def get_database():
-        with open(BASE_DE_DATOS, "r") as db_file:
-            db = json.load(db_file)
-
-        return db
-    
+    if not os.path.exists(BASE_DE_DATOS):
+        with open(BASE_DE_DATOS, "w") as f:
+            json.dump({}, f)
+    with open(BASE_DE_DATOS, "r") as db_file:
+        return json.load(db_file)
 
 def save_database(db):
     with open(BASE_DE_DATOS, "w") as db_file:
-        json.dump(db, db_file)
+        json.dump(db, db_file, indent=4)
 
+
+# --------------------- Ventana para agregar patentes ---------------------
+class VentanaPatentes(QWidget):
+    def __init__(self, dni, nombre):
+        super().__init__()
+        self.dni = dni
+        self.nombre = nombre
+        self.setWindowTitle(f"Agregar Patentes - {nombre}")
+        self.setGeometry(200, 200, 400, 200)
+
+        layout = QVBoxLayout()
+
+        self.label_info = QLabel(f"Agregar patente para {nombre} (DNI: {dni})")
+        self.input_patente = QLineEdit()
+        self.input_patente.setPlaceholderText("Ingrese nueva patente")
+
+        self.boton_agregar = QPushButton("Agregar Patente")
+        self.boton_agregar.clicked.connect(self.agregar_patente)
+
+        layout.addWidget(self.label_info)
+        layout.addWidget(self.input_patente)
+        layout.addWidget(self.boton_agregar)
+
+        self.setLayout(layout)
+
+    def agregar_patente(self):
+        patente = self.input_patente.text().strip().upper()
+        if not patente:
+            QMessageBox.warning(self, "Error", "Debe ingresar una patente válida.")
+            return
+
+        db = get_database()
+
+        if patente in [p for d in db.values() for p in d["patentes"]]:
+            QMessageBox.warning(self, "Error", "Esa patente ya está registrada a otra persona.")
+            return
+
+        db[self.dni]["patentes"].append(patente)
+        save_database(db)
+
+        QMessageBox.information(self, "Éxito", f"Patente {patente} agregada correctamente.")
+        self.input_patente.clear()
 
 
 # --------------------- Ventana Principal ---------------------
@@ -39,17 +76,21 @@ class MainWindow(QMainWindow):
         self.ui.lineEdit.setPlaceholderText("Ingrese su nombre")
         self.ui.lineEdit_2.setPlaceholderText("Ingrese su email")
         self.ui.lineEdit_3.setPlaceholderText("Ingrese su documento")
-        self.ui.lineEdit_3.setPlaceholderText("Ingrese sus patentes")
+        self.ui.lineEdit_4.setPlaceholderText("Ingrese sus patentes")
+
+        self.ui.label.setPixmap(QPixmap("inteligate.jpeg"))
+
 
         # conectar botón registrar
-        self.ui.pushButton.clicked.connect(self.registrar)
+        self.ui.btnregistrar.clicked.connect(self.registrar)
 
     def registrar(self):
         nombre = self.ui.lineEdit.text().strip()
         email = self.ui.lineEdit_2.text().strip()
         documento = self.ui.lineEdit_3.text().strip()
+        patentes = self.ui.lineEdit_4.text().strip()
 
-        if not nombre or not email or not documento:
+        if not nombre or not email or not documento or not patentes:
             QMessageBox.warning(self, "Error", "Complete todos los campos.")
             return
 
@@ -66,7 +107,7 @@ class MainWindow(QMainWindow):
             persona = {
                 "nombre": nombre,
                 "email": email,
-                "patentes": []
+                "patentes": [patentes]
             }
             db[documento] = persona
             save_database(db)
