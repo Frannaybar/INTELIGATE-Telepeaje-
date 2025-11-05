@@ -7,58 +7,62 @@ import os
 from PyQt6 import uic
 from PyQt6.QtGui import QColor
 
-
-
 """
 from Archivo convertido con pyside2-uic archivo.ui > interfaz.py
 import nombself.ui.label_2.setPixmap(QPixmap("tux.jpg")) #carga la imagen en el label_2re de la clase del archivo convertido
 """
 from ui_proyecto import Ui_MainWindow
 
+BASE_DE_DATOS = "./basededatos.json"
+
+
 class MainWindow(QMainWindow):  #Clase MainWindow heredada de QMainWindow, que es una clase de PyQt para crear la ventana principal de la app.
-    def _init_(self): #constructor method. Se ejuecuta cuando la instancia de la clase es creada.
-        super()._init_() #llama al constructor de la clase QMainWindow, para inicializar las funcionalidades básicas de la ventana principal de la app.
+    def __init__(self): #constructor method. Se ejuecuta cuando la instancia de la clase es creada.
+        super().__init__() #llama al constructor de la clase QMainWindow, para inicializar las funcionalidades básicas de la ventana principal de la app.
         self.ui = Ui_MainWindow() #crea una instancia de Ui_MainWindow class, la cual es la definición de la interfaz del usuario para la ventana principal.
         self.ui.setupUi(self) #llama al método setupUi() de la instancia Ui_MainWindow, para setear los componenetes de la interfaz del usuario dentro de main window.
-        uic.loadUi("login.ui", self)
-        self.btnLogin.clicked.connect(self.iniciar_sesion)
-        
-        self.Documentos = "usuarios.json"
-        
-        if not os.path.exists(self.Documentos):
-            with open(self.Documentos, "w") as f:
-                json.dump([], f)
- 
         self.show()
-    def presionar(self):
-        print("Pauliii")
-        
-    def iniciar_sesion(self):
-        usuario = self.txtMail.text().strip()
-        password = self.txtPass.text().strip()
-        doc = self.txtPass.text().strip()
-        
-        with open(self.Documentos, "r") as f:
-            usuarios = json.load(f)
-        
-        for DNI in Documentos:
-            if DNI["documento"] ==  doc:
-                self.mostrar_mensaje(f"Bienvenido, {usuario['nombre']} ", "exito")
-                # TODO: abrir interfaz principal
-                
-                return
+        self.lineEdit.setPlaceholderText("Ingrese su nombre")
+        self.lineEdit_2.setPlaceholderText("ingrese su email")
+        self.lineEdit_3.setPlaceholderText("Ingrese su documento")
 
-        self.mostrar_mensaje("DNI inexistente", "error")
+    def get_database():
+        with open(BASE_DE_DATOS, "r") as db_file:
+            db = json.loads(db_file)
+
+        return db
     
-    def mostrar_mensaje(self, texto, tipo):
-        self.lblError.setText(texto)
-        if tipo == "error":
-            self.lblError.setStyleSheet("color: red; font-weight: bold;")
-        else:
-            self.lblError.setStyleSheet("color: green; font-weight: bold;")
+
+    def save_database(db):
+        with open(BASE_DE_DATOS, "w") as db_file:
+            json.dump(db)
+
+        
+    def registrar(self):
+        nombre = self.txtNombre.text().strip()
+        email = self.txtMail.text().strip()
+        documento = self.txtPass.text().strip()
+
+        db = get_database()
+
+        documentos = db.keys
+
+        if documento in documentos:
+            print("ERROR")
+
+        persona = {
+            "nombre": nombre,
+            "email": email,
+            "patentes": []
+        }
+
+        db[documento] = persona
+
+        save_database(db)
+        
+        self.mostrar_mensaje("Cuenta creada con éxito ", "exito")
     
-    def presionar():
-        print("hola")
+    
 
     # opcional:
     #def abrir_interfaz_principal(self, nombre):
@@ -68,7 +72,7 @@ class MainWindow(QMainWindow):  #Clase MainWindow heredada de QMainWindow, que e
         #self.close()
     
     
-if _name_ == "_main_": #checkea si el script está siendo ejecutado como el prog principal (no importado como un modulo).
+if __name__ == "__main__": #checkea si el script está siendo ejecutado como el prog principal (no importado como un modulo).
     app = QApplication(sys.argv)    # Crea un Qt widget, la cual va ser nuestra ventana.
     window = MainWindow() #crea una intancia de MainWindow 
     window.show()   # IMPORTANT!!!!! la ventanas estan ocultas por defecto.
