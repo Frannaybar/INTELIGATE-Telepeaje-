@@ -1,14 +1,16 @@
 import sys
 import json
 import os
+from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QMessageBox, QVBoxLayout,
-    QLabel, QLineEdit, QPushButton
+    QLabel, QLineEdit, QPushButton, 
 )
-from PySide6.QtGui import QPixmap
 from ui_proyecto import Ui_MainWindow
 
+
 BASE_DE_DATOS = "./basededatos.json"
+
 
 def get_database():
     if not os.path.exists(BASE_DE_DATOS):
@@ -16,6 +18,7 @@ def get_database():
             json.dump({}, f)
     with open(BASE_DE_DATOS, "r") as db_file:
         return json.load(db_file)
+
 
 def save_database(db):
     with open(BASE_DE_DATOS, "w") as db_file:
@@ -54,6 +57,7 @@ class VentanaPatentes(QWidget):
 
         db = get_database()
 
+        # verificar que la patente no esté registrada en otra persona
         if patente in [p for d in db.values() for p in d["patentes"]]:
             QMessageBox.warning(self, "Error", "Esa patente ya está registrada a otra persona.")
             return
@@ -73,13 +77,16 @@ class MainWindow(QMainWindow):
         self.ui.setupUi(self)
 
         self.setWindowTitle("Registro de Usuarios")
+
         self.ui.lineEdit.setPlaceholderText("Ingrese su nombre")
         self.ui.lineEdit_2.setPlaceholderText("Ingrese su email")
         self.ui.lineEdit_3.setPlaceholderText("Ingrese su documento")
-        self.ui.lineEdit_4.setPlaceholderText("Ingrese sus patentes")
+        self.ui.lineEdit_4.setPlaceholderText("Ingrese las patentes separadas por comas o espacios")
 
         self.ui.label.setPixmap(QPixmap("inteligate.jpeg"))
-
+        self.ui.label_2.setPixmap(QPixmap("inteligate.jpeg"))
+        self.ui.label_3.setPixmap(QPixmap("inteligate.jpeg"))
+        self.ui.label_4.setPixmap(QPixmap("inteligate.jpeg"))
 
         # conectar botón registrar
         self.ui.btnregistrar.clicked.connect(self.registrar)
@@ -88,26 +95,37 @@ class MainWindow(QMainWindow):
         nombre = self.ui.lineEdit.text().strip()
         email = self.ui.lineEdit_2.text().strip()
         documento = self.ui.lineEdit_3.text().strip()
-        patentes = self.ui.lineEdit_4.text().strip()
+        patentes_texto = self.ui.lineEdit_4.text().strip()
 
-        if not nombre or not email or not documento or not patentes:
-            QMessageBox.warning(self, "Error", "Complete todos los campos.")
+        if not nombre or not email or not documento:
+            QMessageBox.warning(self, "Error", "Complete todos los campos obligatorios.")
             return
+
+        # Procesar las patentes (separar por coma o espacio)
+        patentes = []
+        if patentes_texto:
+            patentes = [p.strip().upper() for p in patentes_texto.replace(",", " ").split() if p.strip()]
 
         db = get_database()
 
-        # Si el documento ya existe en la base
+        # Si el documento ya existe
         if documento in db:
-            QMessageBox.information(self, "Usuario existente", 
+            QMessageBox.information(self, "Usuario existente",
                                     f"Bienvenido nuevamente, {db[documento]['nombre']}.\n"
                                     "Puede agregar nuevas patentes.")
             self.abrir_ventana_patentes(documento, db[documento]["nombre"])
         else:
-            # Si el documento no existe, lo agregamos
+            # Si el documento no existe, verificar que las patentes no estén duplicadas
+            for p in patentes:
+                if p in [x for d in db.values() for x in d["patentes"]]:
+                    QMessageBox.warning(self, "Error", f"La patente {p} ya está registrada a otra persona.")
+                    return
+
+            # Crear nueva persona
             persona = {
                 "nombre": nombre,
                 "email": email,
-                "patentes": [patentes]
+                "patentes": patentes
             }
             db[documento] = persona
             save_database(db)

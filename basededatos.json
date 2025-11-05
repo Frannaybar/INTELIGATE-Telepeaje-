@@ -4,7 +4,8 @@
         "email": "mateo.marchisone@itsv.edu.ar",
         "patentes": [
             "AE114JP",
-            "AB040JO"
+            "AB040JO",
+            "5577698"
         ]
     },
     "49822993": {
@@ -19,9 +20,13 @@
         "email": "j.castellano@itsv.edu.ar",
         "patentes": []
     },
-    "111111111": {
-        "nombre": "Pepito",
-        "email": "gdsadsa",
-        "patentes": []
+    "49822997": {
+        "nombre": "elepepe",
+        "email": "aliscoaybar@gmail.com",
+        "patentes": [
+            "7339440",
+            "9933221",
+            "1231241"
+        ]
     }
 }
