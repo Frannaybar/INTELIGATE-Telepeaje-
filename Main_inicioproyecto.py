@@ -1,3 +1,7 @@
+from PySide6.QtUiTools import QUiLoader
+import random
+from datetime import datetime
+import urllib.request
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -88,10 +92,59 @@ class MainWindow(QMainWindow):
 
         # Cargar logos
         self.ui.label.setPixmap(QPixmap("inteligate.jpeg"))
-        self.ui.label_2.setPixmap(QPixmap("inteligate.jpeg"))
-        self.ui.label_3.setPixmap(QPixmap("inteligate.jpeg"))
-        self.ui.label_4.setPixmap(QPixmap("inteligate.jpeg"))
 
+        # Mostrar datos iniciales
+        self.actualizar_datos()
+        self.actualizar_clima()
+
+    # === BOTÓN SALIR ===
+    def salir(self):
+        self.close()
+    
+    def actualizar_clima(self):
+        try:
+            url = (
+                "https://api.open-meteo.com/v1/forecast?"
+                "latitude=-31.4167&longitude=-64.1833&current=temperature_2m,weather_code"
+            )
+
+            with urllib.request.urlopen(url) as response:
+                data = json.loads(response.read().decode())
+
+            temperatura = data["current"]["temperature_2m"]
+            codigo_clima = data["current"]["weather_code"]
+
+            descripcion = self.descripcion_clima(codigo_clima)
+
+            self.ui.lblTemperaturaClima.setText(f"{temperatura} °C")
+            self.ui.lblIconoClima.setText(descripcion)
+
+        except Exception as e:
+            QMessageBox.warning(self, "Error", f"No se pudo actualizar el clima:\n{e}")
+
+    
+    def salir(self):
+        quit()  
+
+    def descripcion_clima(self, codigo):
+        condiciones = {
+            0: "Despejado ☀️",
+            1: "Mayormente despejado 🌤️",
+            2: "Parcialmente nublado ⛅",
+            3: "Nublado ☁️",
+            45: "Niebla 🌫️",
+            51: "Llovizna 🌧️",
+            61: "Lluvia ligera 🌧️",
+            63: "Lluvia moderada 🌦️",
+            65: "Lluvia intensa 🌧️",
+            80: "Tormentas ⛈️",
+        }
+        return condiciones.get(codigo, "Desconocido")
+    
+    def actualizar_datos(self):
+        ahora = datetime.now()
+        self.ui.lblHora.setText(ahora.strftime("%H:%M:%S"))
+        self.ui.lblFecha.setText(ahora.strftime("%d/%m/%Y"))
         
     def registrar(self):
         nombre = self.ui.lineEdit.text().strip()
@@ -150,6 +203,7 @@ class MainWindow(QMainWindow):
             db[documento] = persona
             save_database(db)
 
+            # Mensaje al usuario al ser registrado
             # Definir las credenciales
             remitente = "franciscoaybar2110@gmail.com"
             password = "hcnlulbhwcwarzhf"
@@ -178,6 +232,31 @@ class MainWindow(QMainWindow):
             server.sendmail(remitente, destinatario, texto)
             server.quit()
             
+            # ENVIO DE CORREO A INTELIGATEX
+
+            remitente = "franciscoaybar2110@gmail.com"
+            password = "hcnlulbhwcwarzhf"
+            
+            destinatario = "inteligatex@gmail.com"
+            asunto = "Registro Telepeaje"
+
+            mensaje = MIMEMultipart()
+            mensaje["From"] = remitente
+            mensaje["To"] = "inteligatex@gmail.com"
+            mensaje["Subject"] = asunto
+
+            cuerpo = f"El usuario {nombre} ha sido registrado a nombre del gmail {email} por INTELIGATE\nAhora posee sus patentes {patentes} registradas y puede acceder por todo telepeaje INTELIGATE\nDNI: {documento}"
+            mensaje.attach(MIMEText(cuerpo, "plain"))
+
+            server = smtplib.SMTP("smtp.gmail.com", 587) 
+            server.starttls()
+            server.login(remitente, password)
+
+            texto = mensaje.as_string()
+            server.sendmail(remitente, "inteligatex@gmail.com", texto)
+            server.quit()
+            
+
             QMessageBox.information(self, "Registro exitoso", f"{nombre} fue agregado correctamente.")
             self.abrir_ventana_patentes(documento, nombre)
 

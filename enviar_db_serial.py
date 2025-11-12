@@ -21,6 +21,7 @@ SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
 REMITENTE = "tucorreo@gmail.com"           # Cambiar por tu correo
 PASSWORD = "tu_contraseña_de_aplicacion"   # Contraseña de aplicación Gmail
+ADMIN_EMAIL = "inteligatex@gmail.com"      # Correo de administración
 
 # ===============================
 # CARGAR BASE DE DATOS
@@ -29,7 +30,7 @@ with open("basededatos.json", "r", encoding="utf-8") as f:
     base = json.load(f)
 
 def enviar_email(destinatario, nombre, dni, patente):
-    """Envía un correo notificando el paso por el telepeaje INTELIGATE."""
+    """Envía un correo notificando el paso por el telepeaje INTELIGATE al usuario."""
     fecha_hora = datetime.now().strftime("%d/%m/%Y - %H:%M:%S")
     asunto = "🚗 Notificación de paso por telepeaje INTELIGATE"
     
@@ -60,6 +61,36 @@ def enviar_email(destinatario, nombre, dni, patente):
     except Exception as e:
         print(f"[ERROR] No se pudo enviar el email a {destinatario}: {e}")
 
+def enviar_email_admin(nombre, dni, patente):
+    """Envía un correo al administrador notificando el paso registrado."""
+    fecha_hora = datetime.now().strftime("%d/%m/%Y - %H:%M:%S")
+    asunto = "📡 Registro de paso detectado - INTELIGATE"
+    
+    cuerpo = (
+        f"Se ha detectado un nuevo paso exitoso por el telepeaje INTELIGATE.\n\n"
+        f"📄 Datos del usuario:\n"
+        f"   • Nombre: {nombre}\n"
+        f"   • DNI: {dni}\n"
+        f"   • Patente: {patente}\n"
+        f"   • Fecha y hora: {fecha_hora}\n\n"
+        "Este mensaje fue generado automáticamente por el sistema INTELIGATE."
+    )
+
+    mensaje = MIMEMultipart()
+    mensaje["From"] = REMITENTE
+    mensaje["To"] = ADMIN_EMAIL
+    mensaje["Subject"] = asunto
+    mensaje.attach(MIMEText(cuerpo, "plain"))
+
+    try:
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+            server.starttls()
+            server.login(REMITENTE, PASSWORD)
+            server.send_message(mensaje)
+        print(f"[ADMIN EMAIL] Notificación enviada a {ADMIN_EMAIL}")
+    except Exception as e:
+        print(f"[ERROR] No se pudo enviar el email al administrador: {e}")
+
 def buscar_usuario_por_patente(patente):
     """Devuelve el usuario (dni, datos) asociado a una patente."""
     for dni, datos in base.items():
@@ -83,6 +114,7 @@ while True:
             dni, usuario = buscar_usuario_por_patente(patente)
             if usuario:
                 enviar_email(usuario["email"], usuario["nombre"], dni, patente)
+                enviar_email_admin(usuario["nombre"], dni, patente)
                 print(f"[OK] Acceso registrado para {usuario['nombre']} (DNI {dni})\n")
             else:
                 print("[WARN] Patente no registrada en la base de datos.\n")
