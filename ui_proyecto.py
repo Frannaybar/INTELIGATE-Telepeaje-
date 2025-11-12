@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'Proyecto_uipTVibk.ui'
+## Form generated from reading UI file 'Proyecto_uidVpODn.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.9.3
 ##
@@ -28,16 +28,30 @@ class Ui_MainWindow(object):
         self.centralwidget.setObjectName(u"centralwidget")
         self.label = QLabel(self.centralwidget)
         self.label.setObjectName(u"label")
-        self.label.setGeometry(QRect(30, 0, 961, 231))
+        self.label.setGeometry(QRect(20, 0, 971, 231))
         self.label.setFrameShape(QFrame.Shape.Box)
         self.label.setFrameShadow(QFrame.Shadow.Sunken)
         self.label.setLineWidth(2)
         self.btnregistrar = QPushButton(self.centralwidget)
         self.btnregistrar.setObjectName(u"btnregistrar")
         self.btnregistrar.setGeometry(QRect(440, 650, 131, 61))
+        font = QFont()
+        font.setFamilies([u"Candara"])
+        font.setPointSize(12)
+        font.setBold(True)
+        self.btnregistrar.setFont(font)
         self.groupBox = QGroupBox(self.centralwidget)
         self.groupBox.setObjectName(u"groupBox")
-        self.groupBox.setGeometry(QRect(250, 260, 521, 381))
+        self.groupBox.setGeometry(QRect(240, 260, 521, 381))
+        font1 = QFont()
+        font1.setFamilies([u"Candara"])
+        font1.setPointSize(11)
+        font1.setBold(True)
+        font1.setItalic(True)
+        font1.setUnderline(False)
+        self.groupBox.setFont(font1)
+        self.groupBox.setFlat(False)
+        self.groupBox.setCheckable(False)
         self.lineEdit = QLineEdit(self.groupBox)
         self.lineEdit.setObjectName(u"lineEdit")
         self.lineEdit.setGeometry(QRect(20, 50, 481, 41))
@@ -52,7 +66,7 @@ class Ui_MainWindow(object):
         self.lineEdit_4.setGeometry(QRect(20, 290, 481, 41))
         self.label_2 = QLabel(self.centralwidget)
         self.label_2.setObjectName(u"label_2")
-        self.label_2.setGeometry(QRect(30, 230, 161, 591))
+        self.label_2.setGeometry(QRect(20, 230, 161, 591))
         self.label_2.setFrameShape(QFrame.Shape.Box)
         self.label_2.setFrameShadow(QFrame.Shadow.Sunken)
         self.label_2.setLineWidth(2)
@@ -64,7 +78,7 @@ class Ui_MainWindow(object):
         self.label_3.setLineWidth(2)
         self.label_4 = QLabel(self.centralwidget)
         self.label_4.setObjectName(u"label_4")
-        self.label_4.setGeometry(QRect(190, 740, 641, 581))
+        self.label_4.setGeometry(QRect(180, 740, 651, 581))
         self.label_4.setFrameShape(QFrame.Shape.Box)
         self.label_4.setFrameShadow(QFrame.Shadow.Sunken)
         self.label_4.setLineWidth(2)
@@ -74,6 +88,7 @@ class Ui_MainWindow(object):
         MainWindow.setStatusBar(self.statusbar)
 
         self.retranslateUi(MainWindow)
+        self.btnregistrar.clicked.connect(MainWindow.registrar)
 
         QMetaObject.connectSlotsByName(MainWindow)
     # setupUi

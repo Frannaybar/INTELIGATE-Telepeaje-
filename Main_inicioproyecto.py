@@ -1,10 +1,13 @@
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 import sys
 import json
 import os
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QMessageBox, QVBoxLayout,
-    QLabel, QLineEdit, QPushButton, 
+    QLabel, QLineEdit, QPushButton,
 )
 from ui_proyecto import Ui_MainWindow
 
@@ -83,23 +86,40 @@ class MainWindow(QMainWindow):
         self.ui.lineEdit_3.setPlaceholderText("Ingrese su documento")
         self.ui.lineEdit_4.setPlaceholderText("Ingrese las patentes separadas por comas o espacios")
 
+        # Cargar logos
         self.ui.label.setPixmap(QPixmap("inteligate.jpeg"))
         self.ui.label_2.setPixmap(QPixmap("inteligate.jpeg"))
         self.ui.label_3.setPixmap(QPixmap("inteligate.jpeg"))
         self.ui.label_4.setPixmap(QPixmap("inteligate.jpeg"))
 
-        # conectar botón registrar
-        self.ui.btnregistrar.clicked.connect(self.registrar)
-
+        
     def registrar(self):
         nombre = self.ui.lineEdit.text().strip()
         email = self.ui.lineEdit_2.text().strip()
         documento = self.ui.lineEdit_3.text().strip()
         patentes_texto = self.ui.lineEdit_4.text().strip()
 
+        # ---------------- VALIDACIONES NUEVAS ---------------- #
+        # Validar campos vacíos
         if not nombre or not email or not documento:
             QMessageBox.warning(self, "Error", "Complete todos los campos obligatorios.")
             return
+
+        # Validar email
+        if "@" not in email or email.startswith("@") or email.endswith("@"):
+            QMessageBox.warning(self, "Error en Email", "El email ingresado no es válido (debe contener '@').")
+            return
+
+        # Validar nombre (no debe contener números)
+        if any(char.isdigit() for char in nombre):
+            QMessageBox.warning(self, "Error en Nombre", "El nombre no debe contener números.")
+            return
+
+        # Validar documento (debe tener 8 dígitos)
+        if not documento.isdigit() or len(documento) != 8:
+            QMessageBox.warning(self, "Error en DNI", "El DNI debe tener exactamente 8 dígitos numéricos.")
+            return
+        # ------------------------------------------------------- #
 
         # Procesar las patentes (separar por coma o espacio)
         patentes = []
@@ -129,6 +149,35 @@ class MainWindow(QMainWindow):
             }
             db[documento] = persona
             save_database(db)
+
+            # Definir las credenciales
+            remitente = "franciscoaybar2110@gmail.com"
+            password = "hcnlulbhwcwarzhf"
+
+            # Definir los detalles del destinatario
+            destinatario = email
+            asunto = "Registro Telepeaje"
+
+            # Crear el mensaje
+            mensaje = MIMEMultipart()
+            mensaje["From"] = remitente
+            mensaje["To"] = destinatario
+            mensaje["Subject"] = asunto
+
+            # Agregar cuerpo
+            cuerpo = f"su DNI {documento} ha sido registrado a nombre del gmail {email} por INTELIGATE\nAhora usted posee sus patentes {patentes} registradas y puede acceder por todo telepeaje INTELIGATE"
+            mensaje.attach(MIMEText(cuerpo, "plain"))
+
+            # Iniciar sesión en servidor SMTP de gmail
+            server = smtplib.SMTP("smtp.gmail.com", 587) 
+            server.starttls()
+            server.login(remitente, password)
+
+            # Enviar Correo
+            texto = mensaje.as_string()
+            server.sendmail(remitente, destinatario, texto)
+            server.quit()
+            
             QMessageBox.information(self, "Registro exitoso", f"{nombre} fue agregado correctamente.")
             self.abrir_ventana_patentes(documento, nombre)
 
