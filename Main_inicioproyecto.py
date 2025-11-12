@@ -32,6 +32,7 @@ def save_database(db):
         json.dump(db, db_file, indent=4)
 
 
+
 # --------------------- Ventana para agregar patentes ---------------------
 class VentanaPatentes(QWidget):
     def __init__(self, dni, nombre):
@@ -39,17 +40,31 @@ class VentanaPatentes(QWidget):
         self.dni = dni
         self.nombre = nombre
         self.setWindowTitle(f"Agregar Patentes - {nombre}")
-        self.setGeometry(200, 200, 400, 200)
+        self.setGeometry(400, 250, 450, 250)
 
+        # --- Diseño visual mejorado ---
         layout = QVBoxLayout()
+        layout.setContentsMargins(30, 30, 30, 30)
+        layout.setSpacing(15)
 
-        self.label_info = QLabel(f"Agregar patente para {nombre} (DNI: {dni})")
+        self.label_titulo = QLabel("🚗 Agregar nuevas patentes")
+        self.label_titulo.setStyleSheet("font-size: 18px; font-weight: bold; color: #2c3e50;")
+        self.label_info = QLabel(f"Titular: {nombre} (DNI: {dni})")
+        self.label_info.setStyleSheet("color: #34495e; font-size: 14px;")
+
         self.input_patente = QLineEdit()
-        self.input_patente.setPlaceholderText("Ingrese nueva patente")
+        self.input_patente.setPlaceholderText("Ingrese una o varias patentes separadas por comas o espacios")
+        self.input_patente.setStyleSheet(
+            "padding: 8px; font-size: 14px; border: 1px solid #bdc3c7; border-radius: 6px;"
+        )
 
-        self.boton_agregar = QPushButton("Agregar Patente")
+        self.boton_agregar = QPushButton("Agregar Patentes")
+        self.boton_agregar.setStyleSheet(
+            "background-color: #2ecc71; color: white; font-weight: bold; padding: 8px; border-radius: 6px;"
+        )
         self.boton_agregar.clicked.connect(self.agregar_patente)
 
+        layout.addWidget(self.label_titulo)
         layout.addWidget(self.label_info)
         layout.addWidget(self.input_patente)
         layout.addWidget(self.boton_agregar)
@@ -57,22 +72,40 @@ class VentanaPatentes(QWidget):
         self.setLayout(layout)
 
     def agregar_patente(self):
-        patente = self.input_patente.text().strip().upper()
-        if not patente:
-            QMessageBox.warning(self, "Error", "Debe ingresar una patente válida.")
+        texto = self.input_patente.text().strip().upper()
+        if not texto:
+            QMessageBox.warning(self, "Error", "Debe ingresar al menos una patente.")
+            return
+
+        # Separar múltiples patentes (coma o espacio)
+        nuevas_patentes = [p.strip() for p in texto.replace(",", " ").split() if p.strip()]
+        if not nuevas_patentes:
+            QMessageBox.warning(self, "Error", "Formato de patentes no válido.")
             return
 
         db = get_database()
+        patentes_existentes = [p for d in db.values() for p in d["patentes"]]
 
-        # verificar que la patente no esté registrada en otra persona
-        if patente in [p for d in db.values() for p in d["patentes"]]:
-            QMessageBox.warning(self, "Error", "Esa patente ya está registrada a otra persona.")
+        # Verificar duplicadas globales
+        duplicadas = [p for p in nuevas_patentes if p in patentes_existentes]
+        if duplicadas:
+            QMessageBox.warning(
+                self,
+                "Patentes duplicadas",
+                f"Las siguientes patentes ya están registradas:\n{', '.join(duplicadas)}"
+            )
             return
 
-        db[self.dni]["patentes"].append(patente)
+        # Agregar las nuevas patentes
+        db[self.dni]["patentes"].extend(nuevas_patentes)
         save_database(db)
 
-        QMessageBox.information(self, "Éxito", f"Patente {patente} agregada correctamente.")
+        QMessageBox.information(
+            self,
+            "Éxito",
+            f"Se agregaron correctamente las siguientes patentes:\n{', '.join(nuevas_patentes)}"
+        )
+
         self.input_patente.clear()
 
 
