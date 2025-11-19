@@ -20,7 +20,9 @@
     "50189258": {
         "nombre": "Joaquin Castellano",
         "email": "j.castellano@itsv.edu.ar",
-        "patentes": []
+        "patentes": [
+            "AB123998"
+        ]
     },
     "50188669": {
         "nombre": "Santiago Martin",
