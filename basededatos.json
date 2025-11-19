@@ -5,7 +5,8 @@
         "patentes": [
             "AE114JP",
             "AB040JO",
-            "5577698"
+            "5577698",
+            "AG115PL"
         ]
     },
     "49822993": {
@@ -34,5 +35,10 @@
         "patentes": [
             "AE123125"
         ]
+    },
+    "99999999": {
+        "nombre": "santiago martin",
+        "email": "s.martin@itsv.edu.ar",
+        "patentes": []
     }
 }

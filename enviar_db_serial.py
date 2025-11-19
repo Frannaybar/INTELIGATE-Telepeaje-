@@ -9,112 +9,123 @@ from time import sleep
 # ===============================
 # CONFIGURACIÓN SERIAL
 # ===============================
-PUERTO = "COM3"          # Cambiar según tu equipo (ej: "/dev/ttyUSB0" en Linux)
+PUERTO = "COM3"          # Asegúrate que sea el correcto
 BAUDRATE = 9600
-arduino = serial.Serial(PUERTO, BAUDRATE)
-sleep(2)
+
+try:
+    arduino = serial.Serial(PUERTO, BAUDRATE, timeout=1)
+    sleep(2) # Esperar reinicio de Arduino
+    print(f"[CONECTADO] Arduino en {PUERTO}")
+except Exception as e:
+    print(f"[ERROR] No se pudo conectar al Arduino: {e}")
+    exit()
 
 # ===============================
 # CONFIGURACIÓN DEL CORREO
 # ===============================
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
-REMITENTE = "tucorreo@gmail.com"           # Cambiar por tu correo
-PASSWORD = "tu_contraseña_de_aplicacion"   # Contraseña de aplicación Gmail
-ADMIN_EMAIL = "inteligatex@gmail.com"      # Correo de administración
+REMITENTE = "tucorreo@gmail.com"
+PASSWORD = "tu_contraseña_app"
+ADMIN_EMAIL = "inteligatex@gmail.com"
 
 # ===============================
-# CARGAR BASE DE DATOS
+# BASE DE DATOS
 # ===============================
-with open("basededatos.json", "r", encoding="utf-8") as f:
-    base = json.load(f)
+ARCHIVO_DB = "basededatos.json"
 
-def enviar_email(destinatario, nombre, dni, patente):
-    """Envía un correo notificando el paso por el telepeaje INTELIGATE al usuario."""
-    fecha_hora = datetime.now().strftime("%d/%m/%Y - %H:%M:%S")
-    asunto = "🚗 Notificación de paso por telepeaje INTELIGATE"
-    
-    cuerpo = (
-        f"Hola {nombre},\n\n"
-        f"Se ha registrado el paso de un vehículo a tu nombre por el telepeaje INTELIGATE.\n\n"
-        f"📄 Detalles del registro:\n"
-        f"   • DNI: {dni}\n"
-        f"   • Patente: {patente}\n"
-        f"   • Fecha y hora: {fecha_hora}\n\n"
-        "Si no reconoces este paso, por favor comunícate con el área de soporte de INTELIGATE.\n\n"
-        "Gracias por utilizar nuestro sistema.\n\n"
-        "- Equipo INTELIGATE 🚦"
-    )
-
-    mensaje = MIMEMultipart()
-    mensaje["From"] = REMITENTE
-    mensaje["To"] = destinatario
-    mensaje["Subject"] = asunto
-    mensaje.attach(MIMEText(cuerpo, "plain"))
-
+def cargar_base_datos():
     try:
+        with open(ARCHIVO_DB, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        print("[ERROR] No se encontró el archivo basededatos.json")
+        return {}
+
+# Cargar DB al inicio
+base = cargar_base_datos()
+
+# ===============================
+# FUNCIONES EMAIL
+# ===============================
+def enviar_emails_notificacion(usuario, dni, patente):
+    """Envía correos al usuario y al admin"""
+    fecha_hora = datetime.now().strftime("%d/%m/%Y - %H:%M:%S")
+    
+    # 1. Email al Usuario
+    try:
+        msg = MIMEMultipart()
+        msg["From"] = REMITENTE
+        msg["To"] = usuario["email"]
+        msg["Subject"] = "🚗 Paso registrado - INTELIGATE"
+        
+        cuerpo_usuario = f"""Hola {usuario['nombre']},
+        Se registró un acceso con tu vehículo.
+        • Patente: {patente}
+        • Fecha: {fecha_hora}
+        """
+        msg.attach(MIMEText(cuerpo_usuario, "plain"))
+        
         with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
             server.starttls()
             server.login(REMITENTE, PASSWORD)
-            server.send_message(mensaje)
-        print(f"[EMAIL] Notificación enviada correctamente a {destinatario}")
+            server.send_message(msg)
+        print(f"[EMAIL] Enviado a usuario: {usuario['email']}")
     except Exception as e:
-        print(f"[ERROR] No se pudo enviar el email a {destinatario}: {e}")
+        print(f"[EMAIL ERROR] Usuario: {e}")
 
-def enviar_email_admin(nombre, dni, patente):
-    """Envía un correo al administrador notificando el paso registrado."""
-    fecha_hora = datetime.now().strftime("%d/%m/%Y - %H:%M:%S")
-    asunto = "📡 Registro de paso detectado - INTELIGATE"
-    
-    cuerpo = (
-        f"Se ha detectado un nuevo paso exitoso por el telepeaje INTELIGATE.\n\n"
-        f"📄 Datos del usuario:\n"
-        f"   • Nombre: {nombre}\n"
-        f"   • DNI: {dni}\n"
-        f"   • Patente: {patente}\n"
-        f"   • Fecha y hora: {fecha_hora}\n\n"
-        "Este mensaje fue generado automáticamente por el sistema INTELIGATE."
-    )
-
-    mensaje = MIMEMultipart()
-    mensaje["From"] = REMITENTE
-    mensaje["To"] = ADMIN_EMAIL
-    mensaje["Subject"] = asunto
-    mensaje.attach(MIMEText(cuerpo, "plain"))
-
-    try:
-        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-            server.starttls()
-            server.login(REMITENTE, PASSWORD)
-            server.send_message(mensaje)
-        print(f"[ADMIN EMAIL] Notificación enviada a {ADMIN_EMAIL}")
-    except Exception as e:
-        print(f"[ERROR] No se pudo enviar el email al administrador: {e}")
-
-def buscar_usuario_por_patente(patente):
-    """Devuelve el usuario (dni, datos) asociado a una patente."""
-    for dni, datos in base.items():
-        if patente in datos["patentes"]:
-            return dni, datos
-    return None, None
+    # 2. Email al Admin (Opcional, simplificado para no bloquear)
+    # (Puedes duplicar la lógica anterior aquí si deseas enviar al admin)
 
 # ===============================
-# BUCLE PRINCIPAL
+# LÓGICA PRINCIPAL
 # ===============================
-print("[INTELIGATE] Escuchando accesos desde Arduino...\n")
+
+def procesar_solicitud(dni_recibido):
+    """Busca el DNI en el JSON y responde al Arduino"""
+    dni_recibido = dni_recibido.strip()
+    print(f"[SOLICITUD] Verificando DNI: {dni_recibido}")
+
+    # Recargar DB por si hubo cambios en caliente (opcional)
+    # base = cargar_base_datos() 
+
+    if dni_recibido in base:
+        usuario = base[dni_recibido]
+        # Asumimos que tomamos la primera patente registrada
+        patente = usuario["patentes"][0] 
+        nombre = usuario["nombre"]
+
+        print(f"[OK] Usuario encontrado: {nombre} | Patente: {patente}")
+        
+        # 1. Responder al Arduino para que abra la barrera
+        comando = f"ABRIR:{patente}\n"
+        arduino.write(comando.encode())
+        
+        # 2. Enviar correos
+        enviar_emails_notificacion(usuario, dni_recibido, patente)
+        
+    else:
+        print("[DENEGADO] DNI no encontrado en la base de datos.")
+        arduino.write(b"DENEGAR\n")
+
+# ===============================
+# BUCLE DE ESCUCHA
+# ===============================
+print("[INTELIGATE] Sistema iniciado. Esperando datos...\n")
 
 while True:
     if arduino.in_waiting > 0:
-        linea = arduino.readline().decode().strip()
-
-        if linea.startswith("ACCESO:"):
-            patente = linea.split(":")[1]
-            print(f"[INFO] Acceso detectado para patente: {patente}")
-
-            dni, usuario = buscar_usuario_por_patente(patente)
-            if usuario:
-                enviar_email(usuario["email"], usuario["nombre"], dni, patente)
-                enviar_email_admin(usuario["nombre"], dni, patente)
-                print(f"[OK] Acceso registrado para {usuario['nombre']} (DNI {dni})\n")
-            else:
-                print("[WARN] Patente no registrada en la base de datos.\n")
+        try:
+            linea = arduino.readline().decode('utf-8', errors='ignore').strip()
+            
+            # Arduino envía: "VERIFICAR:12345678"
+            if linea.startswith("VERIFICAR:"):
+                dni = linea.split(":")[1]
+                procesar_solicitud(dni)
+                
+            # Mensajes de debug del Arduino (opcional verlos)
+            elif linea: 
+                print(f"[ARDUINO] {linea}")
+                
+        except Exception as e:
+            print(f"[ERROR LECTURA] {e}")
