@@ -150,7 +150,7 @@ class MainWindow(QMainWindow):
         self.ui.lineEdit_4.setPlaceholderText("Ej: AA123BB, A123ABC")
 
         # Cargar logos (asegúrate de que la imagen exista)
-        # self.ui.label.setPixmap(QPixmap("inteligate.jpeg"))
+        self.ui.label.setPixmap(QPixmap("inteligate.jpeg"))
 
         # Mostrar datos iniciales
         self.actualizar_datos()

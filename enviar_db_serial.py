@@ -1,7 +1,7 @@
 import serial
 import json
 import smtplib
-import re  # Importante para validar formatos
+import re
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime
@@ -134,6 +134,7 @@ Fecha: {datetime.now().strftime("%d/%m/%Y - %H:%M:%S")}
 # ===============================
 
 def procesar_dni(dni):
+    """Busca el DNI y pide selección si existe."""
     global usuario_esperando_seleccion
     dni = dni.strip()
     print(f"\n[SOLICITUD] Verificando DNI: {dni}")
@@ -148,7 +149,6 @@ def procesar_dni(dni):
         print("  SELECCIONAR VEHÍCULO:")
         print("="*40)
         
-        # Mostrar opciones validando formato visualmente
         for i, pat in enumerate(patentes):
             tipo, costo = calcular_tarifa(pat)
             if tipo:
@@ -158,6 +158,7 @@ def procesar_dni(dni):
             
         print("="*40 + "\n")
         arduino.write(b"PEDIR_OPCION\n")
+        print("-> Esperando selección desde el teclado...")
 
     else:
         print("[DENEGADO] DNI no encontrado.")
@@ -166,9 +167,11 @@ def procesar_dni(dni):
         usuario_esperando_seleccion = None
 
 def procesar_seleccion(opcion_str):
+    """Valida la opción elegida y abre la barrera."""
     global usuario_esperando_seleccion
 
     if usuario_esperando_seleccion is None:
+        print("[ERROR] Selección recibida sin usuario.")
         arduino.write(b"DENEGAR\n")
         return
 
@@ -180,16 +183,13 @@ def procesar_seleccion(opcion_str):
         if 0 <= indice < len(patentes):
             patente = patentes[indice]
             
-            # 1. VALIDAR PATENTE ANTES DE ABRIR
             tipo, costo = calcular_tarifa(patente)
             
             if tipo is None:
-                # Si el formato es inválido, denegamos el acceso
                 print(f"[ERROR] La patente {patente} tiene un formato inválido.")
                 arduino.write(b"DENEGAR\n")
                 enviar_email_admin_acceso_denegado(patente, "Formato de patente inválido")
             else:
-                # Si es válido, abrimos
                 print(f"[SELECCIONADO] {patente} -> {tipo} (${costo})")
                 arduino.write(f"ABRIR:{patente}\n".encode())
                 
@@ -205,6 +205,7 @@ def procesar_seleccion(opcion_str):
         arduino.write(b"DENEGAR\n")
 
     usuario_esperando_seleccion = None
+    print("\n[LISTO] Esperando próximo vehículo...\n")
 
 # ===============================
 # BUCLE PRINCIPAL
@@ -215,9 +216,30 @@ while True:
     if arduino.in_waiting > 0:
         try:
             linea = arduino.readline().decode('utf-8', errors='ignore').strip()
+
             if linea.startswith("VERIFICAR:"):
                 procesar_dni(linea.split(":")[1])
+
             elif linea.startswith("SELECCION:"):
                 procesar_seleccion(linea.split(":")[1])
+            
+            # 🔔 NUEVA LÓGICA DE AVISOS SERIALES 🔔
+            
+            # 1. Alerta de Emergencia
+            elif linea == "EMERGENCIA":
+                print("\n\n!!! 🚨 ¡ALERTA DE EMERGENCIA! Botón presionado. 🚨 !!!\n")
+                # Aquí podrías añadir un envío de email de alerta al ADMIN si es necesario
+
+            # 2. Privacidad de Teclado (Aviso de tecla pulsada con asterisco)
+            elif linea == "TECLA_PULSADA":
+                # Imprime un asterisco sin saltar de línea para simular la entrada privada
+                print("*", end="", flush=True)
+
+            # ----------------------------------------
+            
+            elif linea:
+                # Mensajes genéricos de Arduino
+                print(f"[ARDUINO] {linea}")
+
         except Exception as e:
             print(f"[ERROR LECTURA] {e}")
