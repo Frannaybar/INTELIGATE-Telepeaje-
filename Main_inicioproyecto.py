@@ -1,40 +1,40 @@
-
-from PySide6.QtUiTools import QUiLoader
-import random
-from datetime import datetime
-import urllib.request
-import smtplib
-import re  # <--- IMPORTADO PARA VALIDAR
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-import sys
-import json
-import os
-from PySide6.QtGui import QPixmap
+from PySide6.QtUiTools import QUiLoader        # Carga interfaces .ui creadas en Qt Designer
+import random                                  # Genera números o elecciones aleatorias
+from datetime import datetime                  # Obtiene fecha y hora actuales
+import urllib.request                           # Permite hacer solicitudes HTTP (descargar imágenes, etc.)
+import smtplib                                  # Permite enviar correos por SMTP
+import re                                       # Validación con expresiones regulares
+from email.mime.text import MIMEText            # Cuerpo del email en formato texto
+from email.mime.multipart import MIMEMultipart  # Email con múltiples partes (texto + adjuntos)
+import sys                                      # Control del sistema (argumentos, salida, etc.)
+import json                                     # Leer y escribir archivos JSON
+import os                                       # Verificar existencia de archivos y rutas
+from PySide6.QtGui import QPixmap               # Manejo de imágenes para QLabel
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QMessageBox, QVBoxLayout,
-    QLabel, QLineEdit, QPushButton,
+    QLabel, QLineEdit, QPushButton,             # Widgets que usará la interfaz
 )
-from ui_proyecto import Ui_MainWindow
+from ui_proyecto import Ui_MainWindow           # Importa la interfaz generada por Qt Designer
 
 
-BASE_DE_DATOS = "./basededatos.json"
+BASE_DE_DATOS = "./basededatos.json"           # Ruta del archivo JSON donde se guardan los datos
 
 
 def get_database():
-    if not os.path.exists(BASE_DE_DATOS):
-        with open(BASE_DE_DATOS, "w") as f:
+    if not os.path.exists(BASE_DE_DATOS):       # Verifica si NO existe la base de datos
+        with open(BASE_DE_DATOS, "w") as f:     # Si no existe, la crea vacía
             json.dump({}, f)
-    with open(BASE_DE_DATOS, "r") as db_file:
-        return json.load(db_file)
+
+    with open(BASE_DE_DATOS, "r") as db_file:   # Abre el archivo JSON en modo lectura
+        return json.load(db_file)               # Devuelve el contenido como diccionario
 
 
 def save_database(db):
-    with open(BASE_DE_DATOS, "w") as db_file:
-        json.dump(db, db_file, indent=4)
+    with open(BASE_DE_DATOS, "w") as db_file:   # Abre el archivo JSON en modo escritura
+        json.dump(db, db_file, indent=4)        # Guarda el diccionario con formato bonito (indentado)
 
 
-# --------------------- FUNCION DE VALIDACION (NUEVA) ---------------------
+# --------------------- FUNCION DE VALIDACION ---------------------
 def validar_formato_patente(patente):
     """
     Retorna True si es Auto (AA123BB) o Moto (A123ABC).
