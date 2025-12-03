@@ -4,6 +4,7 @@ import random
 from datetime import datetime
 import urllib.request
 import smtplib
+import re  # <--- IMPORTADO PARA VALIDAR
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import sys
@@ -33,6 +34,20 @@ def save_database(db):
         json.dump(db, db_file, indent=4)
 
 
+# --------------------- FUNCION DE VALIDACION (NUEVA) ---------------------
+def validar_formato_patente(patente):
+    """
+    Retorna True si es Auto (AA123BB) o Moto (A123ABC).
+    Retorna False si no cumple ninguno.
+    """
+    patron_auto = r"^[A-Z]{2}\d{3}[A-Z]{2}$"
+    patron_moto = r"^[A-Z]{1}\d{3}[A-Z]{3}$"
+    
+    if re.match(patron_auto, patente) or re.match(patron_moto, patente):
+        return True
+    return False
+# -------------------------------------------------------------------------
+
 
 # --------------------- Ventana para agregar patentes ---------------------
 class VentanaPatentes(QWidget):
@@ -54,7 +69,7 @@ class VentanaPatentes(QWidget):
         self.label_info.setStyleSheet("color: #34495e; font-size: 14px;")
 
         self.input_patente = QLineEdit()
-        self.input_patente.setPlaceholderText("Ingrese una o varias patentes separadas por comas o espacios")
+        self.input_patente.setPlaceholderText("Ej: AA123BB (Auto) o A123ABC (Moto)")
         self.input_patente.setStyleSheet(
             "padding: 8px; font-size: 14px; border: 1px solid #bdc3c7; border-radius: 6px;"
         )
@@ -80,9 +95,19 @@ class VentanaPatentes(QWidget):
 
         # Separar múltiples patentes (coma o espacio)
         nuevas_patentes = [p.strip() for p in texto.replace(",", " ").split() if p.strip()]
-        if not nuevas_patentes:
-            QMessageBox.warning(self, "Error", "Formato de patentes no válido.")
+        
+        # --- VALIDACIÓN DE FORMATO ---
+        errores = []
+        for p in nuevas_patentes:
+            if not validar_formato_patente(p):
+                errores.append(p)
+        
+        if errores:
+            QMessageBox.critical(self, "Formato Inválido", 
+                f"Las siguientes patentes no son válidas:\n{', '.join(errores)}\n\n"
+                "Use formato Auto (AA123BB) o Moto (A123ABC).")
             return
+        # -----------------------------
 
         db = get_database()
         patentes_existentes = [p for d in db.values() for p in d["patentes"]]
@@ -104,7 +129,7 @@ class VentanaPatentes(QWidget):
         QMessageBox.information(
             self,
             "Éxito",
-            f"Se agregaron correctamente las siguientes patentes:\n{', '.join(nuevas_patentes)}"
+            f"Se agregaron correctamente:\n{', '.join(nuevas_patentes)}"
         )
 
         self.input_patente.clear()
@@ -122,16 +147,15 @@ class MainWindow(QMainWindow):
         self.ui.lineEdit.setPlaceholderText("Ingrese su nombre")
         self.ui.lineEdit_2.setPlaceholderText("Ingrese su email")
         self.ui.lineEdit_3.setPlaceholderText("Ingrese su documento")
-        self.ui.lineEdit_4.setPlaceholderText("Ingrese las patentes separadas por comas o espacios")
+        self.ui.lineEdit_4.setPlaceholderText("Ej: AA123BB, A123ABC")
 
-        # Cargar logos
-        self.ui.label.setPixmap(QPixmap("inteligate.jpeg"))
+        # Cargar logos (asegúrate de que la imagen exista)
+        # self.ui.label.setPixmap(QPixmap("inteligate.jpeg"))
 
         # Mostrar datos iniciales
         self.actualizar_datos()
         self.actualizar_clima()
 
-    # === BOTÓN SALIR ===
     def salir(self):
         self.close()
     
@@ -154,24 +178,14 @@ class MainWindow(QMainWindow):
             self.ui.lblIconoClima.setText(descripcion)
 
         except Exception as e:
-            QMessageBox.warning(self, "Error", f"No se pudo actualizar el clima:\n{e}")
-
-    
-    def salir(self):
-        quit()  
+            # Silencioso para no molestar si falla internet
+            print(f"Clima error: {e}")
 
     def descripcion_clima(self, codigo):
         condiciones = {
-            0: "Despejado ☀️",
-            1: "Mayormente despejado 🌤️",
-            2: "Parcialmente nublado ⛅",
-            3: "Nublado ☁️",
-            45: "Niebla 🌫️",
-            51: "Llovizna 🌧️",
-            61: "Lluvia ligera 🌧️",
-            63: "Lluvia moderada 🌦️",
-            65: "Lluvia intensa 🌧️",
-            80: "Tormentas ⛈️",
+            0: "Despejado ☀️", 1: "Mayormente despejado 🌤️", 2: "Parcialmente nublado ⛅",
+            3: "Nublado ☁️", 45: "Niebla 🌫️", 51: "Llovizna 🌧️", 61: "Lluvia ligera 🌧️",
+            63: "Lluvia moderada 🌦️", 65: "Lluvia intensa 🌧️", 80: "Tormentas ⛈️",
         }
         return condiciones.get(codigo, "Desconocido")
     
@@ -186,7 +200,6 @@ class MainWindow(QMainWindow):
         documento = self.ui.lineEdit_3.text().strip()
         patentes_texto = self.ui.lineEdit_4.text().strip()
 
-        # ---------------- VALIDACIONES NUEVAS ---------------- #
         # Validar campos vacíos
         if not nombre or not email or not documento:
             QMessageBox.warning(self, "Error", "Complete todos los campos obligatorios.")
@@ -194,41 +207,50 @@ class MainWindow(QMainWindow):
 
         # Validar email
         if "@" not in email or email.startswith("@") or email.endswith("@"):
-            QMessageBox.warning(self, "Error en Email", "El email ingresado no es válido (debe contener '@').")
+            QMessageBox.warning(self, "Error en Email", "El email ingresado no es válido.")
             return
 
-        # Validar nombre (no debe contener números)
+        # Validar nombre
         if any(char.isdigit() for char in nombre):
             QMessageBox.warning(self, "Error en Nombre", "El nombre no debe contener números.")
             return
 
-        # Validar documento (debe tener 8 dígitos)
+        # Validar documento
         if not documento.isdigit() or len(documento) != 8:
-            QMessageBox.warning(self, "Error en DNI", "El DNI debe tener exactamente 8 dígitos numéricos.")
+            QMessageBox.warning(self, "Error en DNI", "El DNI debe tener 8 dígitos numéricos.")
             return
-        # ------------------------------------------------------- #
 
-        # Procesar las patentes (separar por coma o espacio)
+        # Procesar patentes
         patentes = []
         if patentes_texto:
             patentes = [p.strip().upper() for p in patentes_texto.replace(",", " ").split() if p.strip()]
 
+        # --- VALIDACIÓN DE FORMATO PATENTE ---
+        errores_patente = []
+        for p in patentes:
+            if not validar_formato_patente(p):
+                errores_patente.append(p)
+        
+        if errores_patente:
+            QMessageBox.critical(self, "Patente Inválida", 
+                f"Patentes con formato incorrecto:\n{', '.join(errores_patente)}\n\n"
+                "Formatos permitidos:\n- Auto: AA123BB\n- Moto: A123ABC")
+            return
+        # -------------------------------------
+
         db = get_database()
 
-        # Si el documento ya existe
         if documento in db:
             QMessageBox.information(self, "Usuario existente",
                                     f"Bienvenido nuevamente, {db[documento]['nombre']}.\n"
                                     "Puede agregar nuevas patentes.")
             self.abrir_ventana_patentes(documento, db[documento]["nombre"])
         else:
-            # Si el documento no existe, verificar que las patentes no estén duplicadas
             for p in patentes:
                 if p in [x for d in db.values() for x in d["patentes"]]:
-                    QMessageBox.warning(self, "Error", f"La patente {p} ya está registrada a otra persona.")
+                    QMessageBox.warning(self, "Error", f"La patente {p} ya está registrada.")
                     return
 
-            # Crear nueva persona
             persona = {
                 "nombre": nombre,
                 "email": email,
@@ -237,67 +259,47 @@ class MainWindow(QMainWindow):
             db[documento] = persona
             save_database(db)
 
-            # Mensaje al usuario al ser registrado
-            # Definir las credenciales
-            remitente = "franciscoaybar2110@gmail.com"
-            password = "hcnlulbhwcwarzhf"
-
-            # Definir los detalles del destinatario
-            destinatario = email
-            asunto = "Registro Telepeaje"
-
-            # Crear el mensaje
-            mensaje = MIMEMultipart()
-            mensaje["From"] = remitente
-            mensaje["To"] = destinatario
-            mensaje["Subject"] = asunto
-
-            # Agregar cuerpo
-            cuerpo = f"su DNI {documento} ha sido registrado a nombre del gmail {email} por INTELIGATE\nAhora usted posee sus patentes {patentes} registradas y puede acceder por todo telepeaje INTELIGATE"
-            mensaje.attach(MIMEText(cuerpo, "plain"))
-
-            # Iniciar sesión en servidor SMTP de gmail
-            server = smtplib.SMTP("smtp.gmail.com", 587) 
-            server.starttls()
-            server.login(remitente, password)
-
-            # Enviar Correo
-            texto = mensaje.as_string()
-            server.sendmail(remitente, destinatario, texto)
-            server.quit()
-            
-            # ENVIO DE CORREO A INTELIGATEX
-
-            remitente = "franciscoaybar2110@gmail.com"
-            password = "hcnlulbhwcwarzhf"
-            
-            destinatario = "inteligatex@gmail.com"
-            asunto = "Registro Telepeaje"
-
-            mensaje = MIMEMultipart()
-            mensaje["From"] = remitente
-            mensaje["To"] = "inteligatex@gmail.com"
-            mensaje["Subject"] = asunto
-
-            cuerpo = f"El usuario {nombre} ha sido registrado a nombre del gmail {email} por INTELIGATE\nAhora posee sus patentes {patentes} registradas y puede acceder por todo telepeaje INTELIGATE\nDNI: {documento}"
-            mensaje.attach(MIMEText(cuerpo, "plain"))
-
-            server = smtplib.SMTP("smtp.gmail.com", 587) 
-            server.starttls()
-            server.login(remitente, password)
-
-            texto = mensaje.as_string()
-            server.sendmail(remitente, "inteligatex@gmail.com", texto)
-            server.quit()
-            
+            # Envío de Emails (Envuelta en Try para que no cierre la app si falla internet)
+            try:
+                self.enviar_correos_bienvenida(email, nombre, documento, patentes)
+            except Exception as e:
+                print(f"Error enviando emails: {e}")
+                QMessageBox.information(self, "Info", "Usuario registrado, pero falló el envío del email.")
 
             QMessageBox.information(self, "Registro exitoso", f"{nombre} fue agregado correctamente.")
             self.abrir_ventana_patentes(documento, nombre)
 
+    def enviar_correos_bienvenida(self, email, nombre, documento, patentes):
+        remitente = "franciscoaybar2110@gmail.com"
+        password = "hcnlulbhwcwarzhf" # Considera usar variables de entorno
+        
+        # 1. Email al Usuario
+        msg_user = MIMEMultipart()
+        msg_user["From"] = remitente
+        msg_user["To"] = email
+        msg_user["Subject"] = "Registro Telepeaje - INTELIGATE"
+        cuerpo_user = f"Hola {nombre},\nTu DNI {documento} ha sido registrado.\nPatentes asociadas: {', '.join(patentes)}"
+        msg_user.attach(MIMEText(cuerpo_user, "plain"))
+
+        # 2. Email al Admin
+        msg_admin = MIMEMultipart()
+        msg_admin["From"] = remitente
+        msg_admin["To"] = "inteligatex@gmail.com"
+        msg_admin["Subject"] = "Nuevo Usuario Registrado"
+        cuerpo_admin = f"NUEVO USUARIO\nNombre: {nombre}\nEmail: {email}\nDNI: {documento}\nPatentes: {patentes}"
+        msg_admin.attach(MIMEText(cuerpo_admin, "plain"))
+
+        # Enviar ambos en una sola conexión
+        server = smtplib.SMTP("smtp.gmail.com", 587) 
+        server.starttls()
+        server.login(remitente, password)
+        server.send_message(msg_user)
+        server.send_message(msg_admin)
+        server.quit()
+
     def abrir_ventana_patentes(self, dni, nombre):
         self.ventana_patentes = VentanaPatentes(dni, nombre)
         self.ventana_patentes.show()
-
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

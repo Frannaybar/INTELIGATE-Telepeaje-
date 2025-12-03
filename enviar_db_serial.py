@@ -1,6 +1,7 @@
 import serial
 import json
 import smtplib
+import re  # Importante para validar formatos
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime
@@ -9,6 +10,7 @@ from time import sleep
 # ===============================
 # CONFIGURACIÓN SERIAL
 # ===============================
+
 PUERTO = "COM3"
 BAUDRATE = 9600
 
@@ -23,6 +25,7 @@ except Exception as e:
 # ===============================
 # CONFIGURACIÓN EMAIL
 # ===============================
+
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
 REMITENTE = "franciscoaybar2110@gmail.com"
@@ -32,6 +35,7 @@ ADMIN_EMAIL = "inteligatex@gmail.com"
 # ===============================
 # BASE DE DATOS
 # ===============================
+
 ARCHIVO_DB = "basededatos.json"
 usuario_esperando_seleccion = None
 
@@ -46,10 +50,34 @@ def cargar_base_datos():
 base = cargar_base_datos()
 
 # ===============================
+# LÓGICA DE TARIFAS Y VALIDACIÓN
+# ===============================
+
+def calcular_tarifa(patente):
+    """
+    Analiza el formato de la patente.
+    Retorna (Tipo, Precio).
+    Si el formato es inválido, retorna (None, None).
+    """
+    patente = patente.upper().strip()
+    
+    # Regex para AUTO (AA123BB): 2 Letras + 3 Números + 2 Letras
+    if re.match(r'^[A-Z]{2}\d{3}[A-Z]{2}$', patente):
+        return "Auto", 5000
+        
+    # Regex para MOTO (A123ABC): 1 Letra + 3 Números + 3 Letras
+    elif re.match(r'^[A-Z]{1}\d{3}[A-Z]{3}$', patente):
+        return "Moto", 3000
+    
+    # Si no coincide con ninguno, es inválido
+    else:
+        return None, None
+
+# ===============================
 # FUNCIONES DE EMAIL
 # ===============================
+
 def enviar_email(destinatario, asunto, cuerpo):
-    """Función genérica para enviar emails"""
     try:
         msg = MIMEMultipart()
         msg["From"] = REMITENTE
@@ -61,54 +89,51 @@ def enviar_email(destinatario, asunto, cuerpo):
             server.starttls()
             server.login(REMITENTE, PASSWORD)
             server.send_message(msg)
-
         print(f"[EMAIL] Enviado a {destinatario}")
-
     except Exception as e:
         print(f"[EMAIL ERROR] {e}")
 
-def enviar_email_notificacion(usuario, dni, patente):
-    """Email al dueño del auto"""
+def enviar_email_notificacion(usuario, dni, patente, tipo, costo):
     cuerpo = f"""
 Hola {usuario['nombre']},
 Se registró un acceso con tu vehículo.
+
+DETALLES:
+-------------------------
 • Patente: {patente}
-• DNI: {dni}
+• Tipo: {tipo}
+• Costo: ${costo}
 • Fecha: {datetime.now().strftime("%d/%m/%Y - %H:%M:%S")}
 """
-    enviar_email(usuario["email"], "🚗 Paso registrado - INTELIGATE", cuerpo)
+    enviar_email(usuario["email"], f"🚗 Paso registrado - {tipo}", cuerpo)
 
-# ===============================
-# NUEVAS FUNCIONES PEDIDAS
-# ===============================
-def enviar_email_admin_acceso_ok(usuario, dni, patente):
-    """Notifica al administrador cuando pasa un auto válido."""
+def enviar_email_admin_acceso_ok(usuario, dni, patente, tipo, costo):
     cuerpo = f"""
 ACCESO AUTORIZADO
 ========================
 Nombre: {usuario['nombre']}
 DNI: {dni}
 Patente: {patente}
-Fecha y hora: {datetime.now().strftime("%d/%m/%Y - %H:%M:%S")}
+Vehículo: {tipo}
+Cobrado: ${costo}
 """
     enviar_email(ADMIN_EMAIL, "✔ ACCESO AUTORIZADO", cuerpo)
 
-def enviar_email_admin_acceso_denegado(dni_erroneo):
-    """Notifica al administrador cuando intentan pasar con DNI inválido."""
+def enviar_email_admin_acceso_denegado(dni_erroneo, motivo="DNI no registrado"):
     cuerpo = f"""
 ACCESO DENEGADO
 ========================
-DNI ingresado: {dni_erroneo}
-Motivo: No está registrado en la base de datos.
-Fecha y hora: {datetime.now().strftime("%d/%m/%Y - %H:%M:%S")}
+ID/DNI: {dni_erroneo}
+Motivo: {motivo}
+Fecha: {datetime.now().strftime("%d/%m/%Y - %H:%M:%S")}
 """
     enviar_email(ADMIN_EMAIL, "❌ ACCESO DENEGADO", cuerpo)
 
 # ===============================
 # FUNCIONES PRINCIPALES
 # ===============================
+
 def procesar_dni(dni):
-    """Busca el DNI y pide selección si existe."""
     global usuario_esperando_seleccion
     dni = dni.strip()
     print(f"\n[SOLICITUD] Verificando DNI: {dni}")
@@ -116,54 +141,60 @@ def procesar_dni(dni):
     if dni in base:
         usuario = base[dni]
         patentes = usuario["patentes"]
-
         usuario_esperando_seleccion = {"dni": dni, "usuario": usuario}
 
         print("\n" + "="*40)
         print(f"  USUARIO: {usuario['nombre']}")
         print("  SELECCIONAR VEHÍCULO:")
         print("="*40)
+        
+        # Mostrar opciones validando formato visualmente
         for i, pat in enumerate(patentes):
-            print(f"  [{i+1}] {pat}")
+            tipo, costo = calcular_tarifa(pat)
+            if tipo:
+                print(f"  [{i+1}] {pat} ({tipo} - ${costo})")
+            else:
+                print(f"  [{i+1}] {pat} [FORMATO INVÁLIDO]")
+            
         print("="*40 + "\n")
-
         arduino.write(b"PEDIR_OPCION\n")
-        print("-> Esperando selección desde el teclado...")
 
     else:
         print("[DENEGADO] DNI no encontrado.")
         arduino.write(b"DENEGAR\n")
-
-        # 🔔 NUEVO: Notificar al administrador
         enviar_email_admin_acceso_denegado(dni)
-
         usuario_esperando_seleccion = None
 
 def procesar_seleccion(opcion_str):
-    """Valida la opción elegida y abre la barrera."""
     global usuario_esperando_seleccion
 
     if usuario_esperando_seleccion is None:
-        print("[ERROR] Selección recibida sin usuario.")
         arduino.write(b"DENEGAR\n")
         return
 
     try:
         indice = int(opcion_str) - 1
         usuario = usuario_esperando_seleccion["usuario"]
-        dni = usuario_esperando_seleccion["dni"]
         patentes = usuario["patentes"]
 
         if 0 <= indice < len(patentes):
             patente = patentes[indice]
-            print(f"[SELECCIONADO] {patente}")
-            arduino.write(f"ABRIR:{patente}\n".encode())
-
-            # Email al dueño
-            enviar_email_notificacion(usuario, dni, patente)
-
-            # 🔔 NUEVO: Email al administrador
-            enviar_email_admin_acceso_ok(usuario, dni, patente)
+            
+            # 1. VALIDAR PATENTE ANTES DE ABRIR
+            tipo, costo = calcular_tarifa(patente)
+            
+            if tipo is None:
+                # Si el formato es inválido, denegamos el acceso
+                print(f"[ERROR] La patente {patente} tiene un formato inválido.")
+                arduino.write(b"DENEGAR\n")
+                enviar_email_admin_acceso_denegado(patente, "Formato de patente inválido")
+            else:
+                # Si es válido, abrimos
+                print(f"[SELECCIONADO] {patente} -> {tipo} (${costo})")
+                arduino.write(f"ABRIR:{patente}\n".encode())
+                
+                enviar_email_notificacion(usuario, usuario_esperando_seleccion["dni"], patente, tipo, costo)
+                enviar_email_admin_acceso_ok(usuario, usuario_esperando_seleccion["dni"], patente, tipo, costo)
 
         else:
             print("[ERROR] Opción inválida.")
@@ -174,7 +205,6 @@ def procesar_seleccion(opcion_str):
         arduino.write(b"DENEGAR\n")
 
     usuario_esperando_seleccion = None
-    print("\n[LISTO] Esperando próximo vehículo...\n")
 
 # ===============================
 # BUCLE PRINCIPAL
@@ -185,15 +215,9 @@ while True:
     if arduino.in_waiting > 0:
         try:
             linea = arduino.readline().decode('utf-8', errors='ignore').strip()
-
             if linea.startswith("VERIFICAR:"):
                 procesar_dni(linea.split(":")[1])
-
             elif linea.startswith("SELECCION:"):
                 procesar_seleccion(linea.split(":")[1])
-
-            elif linea:
-                print(f"[ARDUINO] {linea}")
-
         except Exception as e:
             print(f"[ERROR LECTURA] {e}")
