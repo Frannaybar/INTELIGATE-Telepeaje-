@@ -242,4 +242,4 @@ while True:
                 print(f"[ARDUINO] {linea}")
 
         except Exception as e:
-            print(f"[ERROR LECTURA] {e}")
+            print(f"[ERROR LECTURA] {e}") 
