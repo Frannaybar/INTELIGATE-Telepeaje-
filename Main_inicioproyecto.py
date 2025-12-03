@@ -281,7 +281,7 @@ class MainWindow(QMainWindow):
         cuerpo_user = f"Hola {nombre},\nTu DNI {documento} ha sido registrado.\nPatentes asociadas: {', '.join(patentes)}"
         msg_user.attach(MIMEText(cuerpo_user, "plain"))
 
-        # 2. Email al Admin
+        # 2. Email al Administrador
         msg_admin = MIMEMultipart()
         msg_admin["From"] = remitente
         msg_admin["To"] = "inteligatex@gmail.com"
