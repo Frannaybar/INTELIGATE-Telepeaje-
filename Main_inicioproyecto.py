@@ -122,7 +122,7 @@ class VentanaPatentes(QWidget):
             )
             return
 
-        # Agregar las nuevas patentes
+        # agregar las nuevas patentes
         db[self.dni]["patentes"].extend(nuevas_patentes)
         save_database(db)
 
@@ -135,7 +135,7 @@ class VentanaPatentes(QWidget):
         self.input_patente.clear()
 
 
-# --------------------- Ventana Principal ---------------------
+# --------------------- Ventana Principal numero (1) ---------------------
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -149,10 +149,10 @@ class MainWindow(QMainWindow):
         self.ui.lineEdit_3.setPlaceholderText("Ingrese su documento")
         self.ui.lineEdit_4.setPlaceholderText("Ej: AA123BB, A123ABC")
 
-        # Cargar logos (asegúrate de que la imagen exista)
+        # cargar logos (asegúrate de que la imagen exista)
         self.ui.label.setPixmap(QPixmap("inteligate.jpeg"))
 
-        # Mostrar datos iniciales
+        # mostrar datos iniciales
         self.actualizar_datos()
         self.actualizar_clima()
 
@@ -178,7 +178,7 @@ class MainWindow(QMainWindow):
             self.ui.lblIconoClima.setText(descripcion)
 
         except Exception as e:
-            # Silencioso para no molestar si falla internet
+            # silencioso para no molestar si falla internet
             print(f"Clima error: {e}")
 
     def descripcion_clima(self, codigo):
@@ -200,27 +200,27 @@ class MainWindow(QMainWindow):
         documento = self.ui.lineEdit_3.text().strip()
         patentes_texto = self.ui.lineEdit_4.text().strip()
 
-        # Validar campos vacíos
+        # validar campos vacíos
         if not nombre or not email or not documento:
             QMessageBox.warning(self, "Error", "Complete todos los campos obligatorios.")
             return
 
-        # Validar email
+        # validar email
         if "@" not in email or email.startswith("@") or email.endswith("@"):
             QMessageBox.warning(self, "Error en Email", "El email ingresado no es válido.")
             return
 
-        # Validar nombre
+        # validar nombre
         if any(char.isdigit() for char in nombre):
             QMessageBox.warning(self, "Error en Nombre", "El nombre no debe contener números.")
             return
 
-        # Validar documento
+        # validar dni
         if not documento.isdigit() or len(documento) != 8:
             QMessageBox.warning(self, "Error en DNI", "El DNI debe tener 8 dígitos numéricos.")
             return
 
-        # Procesar patentes
+        # procesar patentes
         patentes = []
         if patentes_texto:
             patentes = [p.strip().upper() for p in patentes_texto.replace(",", " ").split() if p.strip()]
@@ -259,7 +259,7 @@ class MainWindow(QMainWindow):
             db[documento] = persona
             save_database(db)
 
-            # Envío de Emails (Envuelta en Try para que no cierre la app si falla internet)
+            # envío de emails (envuelta en Try para que no cierre la app si falla internet)
             try:
                 self.enviar_correos_bienvenida(email, nombre, documento, patentes)
             except Exception as e:
@@ -271,7 +271,7 @@ class MainWindow(QMainWindow):
 
     def enviar_correos_bienvenida(self, email, nombre, documento, patentes):
         remitente = "franciscoaybar2110@gmail.com"
-        password = "hcnlulbhwcwarzhf" # Considera usar variables de entorno
+        password = "hcnlulbhwcwarzhf" # considera usar variables de entorno
         
         # 1. Email al Usuario
         msg_user = MIMEMultipart()
