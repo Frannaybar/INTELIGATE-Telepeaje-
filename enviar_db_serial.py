@@ -27,7 +27,7 @@ except Exception as e:
 # ===============================
 
 SMTP_SERVER = "smtp.gmail.com"       # Servidor de Gmail
-SMTP_PORT = 587                      # Puerto SMTP TLS
+SMTP_PORT = 587                      # Puerto SMTP 
 REMITENTE = "franciscoaybar2110@gmail.com"  # Email que envía mensajes
 PASSWORD = "hcnlulbhwcwarzhf"        # Contraseña de aplicación
 ADMIN_EMAIL = "inteligatex@gmail.com" # Email del administrador
@@ -36,7 +36,7 @@ ADMIN_EMAIL = "inteligatex@gmail.com" # Email del administrador
 # BASE DE DATOS
 # ===============================
 
-ARCHIVO_DB = "basededatos.json"   # Archivo JSON con usuarios
+ARCHIVO_DB = "basededatos.json"   # Archivo json con usuarios
 usuario_esperando_seleccion = None # Variable global para saber si estamos esperando patente
 
 def cargar_base_datos():
@@ -58,7 +58,7 @@ def calcular_tarifa(patente):
     Valida el formato de la patente y define el precio.
     Retorna (tipo, costo). Si no coincide, retorna (None, None).
     """
-    patente = patente.upper().strip()     # Normaliza la patente
+    patente = patente.upper().strip()     # Normaliza la patente (mayuscula y guarda el valor)
 
     # Patente de AUTO: AA123BB
     if re.match(r'^[A-Z]{2}\d{3}[A-Z]{2}$', patente):
@@ -88,9 +88,9 @@ def enviar_email(destinatario, asunto, cuerpo):
             server.starttls()                               # Activa TLS
             server.login(REMITENTE, PASSWORD)               # Login
             server.send_message(msg)                        # Envía email
-        print(f"[EMAIL] Enviado a {destinatario}")          # Log de éxito
+        print(f"[EMAIL] Enviado a {destinatario}")          # éxito
     except Exception as e:
-        print(f"[EMAIL ERROR] {e}")                         # Log de error
+        print(f"[EMAIL ERROR] {e}")                         # error
 
 def enviar_email_notificacion(usuario, dni, patente, tipo, costo):
     # Genera cuerpo del mail para el usuario

@@ -42,5 +42,13 @@
         "nombre": "santiago martin",
         "email": "s.martin@itsv.edu.ar",
         "patentes": []
+    },
+    "50505050": {
+        "nombre": "santiago martin",
+        "email": "s.martin@itsv.edu.ar",
+        "patentes": [
+            "AE123BF",
+            "A143KLM"
+        ]
     }
 }
